@@ -162,6 +162,13 @@ function syncHead() {
   }
   $('connDot').className = 'dot' + (c.api_key && c.base_url && c.model ? ' ok' : '');
   $('connDot').title = c.api_key ? '接口已填写' : '未设置接口';
+
+  const ready = !!(c.base_url && c.model && c.api_key);
+  const btn = $('btnSet');
+  btn.classList.toggle('attention', !ready || !c.verified);
+  $('cfgLabel').textContent = !ready
+    ? '模型接口 · 未设置'
+    : (c.verified ? '模型接口 · 已连接' : '模型接口 · 待验证');
 }
 
 async function loadBundle() {
@@ -304,7 +311,7 @@ async function saveAndTest() {
     persona: $('persona').value,
   };
   try {
-    store.set(LS.cfg, JSON.stringify({ ...cfg(), ...patch }));
+    store.set(LS.cfg, JSON.stringify({ ...cfg(), ...patch, verified: false }));
     syncHead();
   } catch (e) {
     $('testinfo').textContent = '保存失败：' + e.message;
@@ -317,9 +324,11 @@ async function saveAndTest() {
   $('testinfo').textContent = '测试中……';
   try {
     const content = await chat([{ role: 'user', content: '只回两个字：可用' }]);
+    store.set(LS.cfg, JSON.stringify({ ...cfg(), verified: true }));
     $('testinfo').textContent = '接口通了：' + content.slice(0, 40);
     $('connDot').className = 'dot ok';
-    setTimeout(() => { $('drawer').setAttribute('hidden', ''); }, 600);
+    syncHead();
+    setTimeout(() => { $('drawer').setAttribute('hidden', ''); }, 700);
   } catch (e) {
     $('testinfo').textContent = '不通：' + e.message;
   }
@@ -356,7 +365,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   await loadMeta();
   const c = cfg();
-  if (!c.api_key) openDrawer(true);
+  const ready = !!(c.base_url && c.model && c.api_key);
+  if (!ready) {
+    openDrawer(true);
+  } else if (!c.verified) {
+    openDrawer(true);
+    $('testinfo').textContent = '上次保存后没验证通过，点「保存并测试」确认一次。';
+  }
   $('input').focus();
 });
 

@@ -121,6 +121,36 @@ button.linky:hover { color: var(--paper-dim); }
 .note p { margin: 0 0 10px; }
 
 .rail-foot { margin-top: auto; display: flex; align-items: center; gap: 10px; }
+
+.cfg-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 10px;
+  background: #221e17;
+  border: 1px solid #4b4436;
+  color: #ded7c5;
+  border-radius: 9px;
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: 1.5px;
+}
+.cfg-btn:hover { border-color: #6d6453; color: #fff8e9; background: #2a251c; }
+.cfg-btn .gear { font-size: 15px; line-height: 1; }
+
+/* 还没配好接口时，这个入口要跳出来 */
+.cfg-btn.attention {
+  border-color: var(--seal);
+  color: #ffd9cc;
+  background: rgba(168, 58, 44, .16);
+  animation: breathe 2.4s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 78, 62, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(200, 78, 62, .16); }
+}
 .dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: #5a5348;
@@ -368,7 +398,10 @@ input[type="range"] {
   </div>
 
   <div class="rail-foot">
-    <button id="btnSet" class="linky">模型接口设置</button>
+    <button id="btnSet" class="cfg-btn">
+      <span class="gear">⚙</span>
+      <span id="cfgLabel">模型接口 · 未设置</span>
+    </button>
     <span class="dot" id="connDot" title="未设置接口"></span>
   </div>
 </aside>
@@ -386,7 +419,7 @@ input[type="range"] {
     <div class="blank">
       <p class="blank-lead">在这个世界里，你不再是读者。</p>
       <p>左侧选一本设定集、一张角色卡，点「开局」。它会先问你三句，然后才开始。</p>
-      <p class="dim">模型接口在左下角设置：地址、模型名、你自己的 Key。Key 只留在这台电脑的浏览器里。</p>
+      <p class="dim">模型接口在左下角「模型接口」按钮里设置：地址、模型名、你自己的 Key。Key 只留在这台电脑的浏览器里。</p>
     </div>
   </div>
 
@@ -612,6 +645,13 @@ function syncHead() {
   }
   $('connDot').className = 'dot' + (c.api_key && c.base_url && c.model ? ' ok' : '');
   $('connDot').title = c.api_key ? '接口已填写' : '未设置接口';
+
+  const ready = !!(c.base_url && c.model && c.api_key);
+  const btn = $('btnSet');
+  btn.classList.toggle('attention', !ready || !c.verified);
+  $('cfgLabel').textContent = !ready
+    ? '模型接口 · 未设置'
+    : (c.verified ? '模型接口 · 已连接' : '模型接口 · 待验证');
 }
 
 async function loadBundle() {
@@ -754,7 +794,7 @@ async function saveAndTest() {
     persona: $('persona').value,
   };
   try {
-    store.set(LS.cfg, JSON.stringify({ ...cfg(), ...patch }));
+    store.set(LS.cfg, JSON.stringify({ ...cfg(), ...patch, verified: false }));
     syncHead();
   } catch (e) {
     $('testinfo').textContent = '保存失败：' + e.message;
@@ -767,9 +807,11 @@ async function saveAndTest() {
   $('testinfo').textContent = '测试中……';
   try {
     const content = await chat([{ role: 'user', content: '只回两个字：可用' }]);
+    store.set(LS.cfg, JSON.stringify({ ...cfg(), verified: true }));
     $('testinfo').textContent = '接口通了：' + content.slice(0, 40);
     $('connDot').className = 'dot ok';
-    setTimeout(() => { $('drawer').setAttribute('hidden', ''); }, 600);
+    syncHead();
+    setTimeout(() => { $('drawer').setAttribute('hidden', ''); }, 700);
   } catch (e) {
     $('testinfo').textContent = '不通：' + e.message;
   }
@@ -806,7 +848,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   await loadMeta();
   const c = cfg();
-  if (!c.api_key) openDrawer(true);
+  const ready = !!(c.base_url && c.model && c.api_key);
+  if (!ready) {
+    openDrawer(true);
+  } else if (!c.verified) {
+    openDrawer(true);
+    $('testinfo').textContent = '上次保存后没验证通过，点「保存并测试」确认一次。';
+  }
   $('input').focus();
 });
 
