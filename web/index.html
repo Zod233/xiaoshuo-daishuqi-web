@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小说带入器</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<aside class="rail">
+  <div class="mark">
+    <span class="seal">入</span>
+    <div>
+      <b>小说带入器</b>
+      <em>框架版</em>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>世界</label>
+    <select id="world"></select>
+  </div>
+  <div class="field">
+    <label>带入</label>
+    <select id="character"></select>
+  </div>
+
+  <div class="actions">
+    <button id="btnStart" class="primary">开局</button>
+    <button id="btnSettle" class="quiet">结算本场</button>
+    <button id="btnExport" class="quiet">导出记录</button>
+  </div>
+
+  <div class="note" id="railNote">
+    <p>开局先答三问：我是谁、这一场先办成什么、这一趟想得到什么。</p>
+    <p>答完才落场景。判定不会写在明面上，只在「做不到」或「代价大」时给你一句理由。</p>
+  </div>
+
+  <div class="rail-foot">
+    <button id="btnSet" class="linky">模型接口设置</button>
+    <span class="dot" id="connDot" title="未设置接口"></span>
+  </div>
+</aside>
+
+<main class="stage">
+  <header class="head">
+    <div class="head-l">
+      <h1 id="worldTitle">尚未开局</h1>
+      <span class="pile" id="statusLine">选好世界与角色，然后开局</span>
+    </div>
+    <div class="head-r" id="headTag">旁白 · 原著旁白</div>
+  </header>
+
+  <div class="log" id="log">
+    <div class="blank">
+      <p class="blank-lead">在这个世界里，你不再是读者。</p>
+      <p>左侧选一本设定集、一张角色卡，点「开局」。它会先问你三句，然后才开始。</p>
+      <p class="dim">模型接口在左下角设置：地址、模型名、你自己的 Key。Key 只留在这台电脑的浏览器里。</p>
+    </div>
+  </div>
+
+  <footer class="composer">
+    <div class="box">
+      <textarea id="input" rows="1" placeholder="你要做什么？（Enter 发送 · Shift+Enter 换行）"></textarea>
+      <button id="btnSend" class="send" aria-label="发送">↵</button>
+    </div>
+    <div class="hint" id="hint">一次只做一件事，写清楚动作和对象就行。</div>
+  </footer>
+</main>
+
+<div id="drawer" class="veil" hidden>
+  <div class="card">
+    <h2>模型接口</h2>
+    <p class="lead">用你自己的模型玩：地址、模型名、Key 填在这里。请求经本机转发，不落盘、不入库。</p>
+
+    <div class="grid">
+      <label class="wide">服务商预设
+        <select id="preset">
+          <option value="">— 选择常用 —</option>
+          <option value="https://api.deepseek.com/v1|deepseek-chat">DeepSeek</option>
+          <option value="https://api.moonshot.cn/v1|kimi-k2-0905-preview">Moonshot / Kimi</option>
+          <option value="https://open.bigmodel.cn/api/paas/v4|glm-4.5">智谱 GLM</option>
+          <option value="https://api.siliconflow.cn/v1|deepseek-ai/DeepSeek-V3">硅基流动</option>
+          <option value="https://dashscope.aliyuncs.com/compatible-mode/v1|qwen-plus">通义千问</option>
+          <option value="https://api.openai.com/v1|gpt-4o-mini">OpenAI</option>
+        </select>
+      </label>
+      <label class="wide">接口地址（OpenAI 兼容，末尾带 /v1）
+        <input id="base" placeholder="https://api.deepseek.com/v1" spellcheck="false">
+      </label>
+      <label>模型名
+        <input id="model" placeholder="deepseek-chat" spellcheck="false">
+      </label>
+      <label>API Key
+        <input id="key" type="password" placeholder="sk-…" spellcheck="false">
+      </label>
+      <label class="wide">旁白人设
+        <select id="persona">
+          <option value="原著旁白">原著旁白（最贴原著）</option>
+          <option value="温和导游">温和导游（解释多一些）</option>
+          <option value="冷峻史官">冷峻史官（冷、少废话）</option>
+        </select>
+      </label>
+      <label class="wide">发散程度 <output id="tval">0.8</output>
+        <input id="temp" type="range" min="0.3" max="1.2" step="0.1" value="0.8">
+      </label>
+    </div>
+
+    <p id="testinfo" class="test"></p>
+
+    <div class="card-foot">
+      <button id="btnSave" class="primary">保存并测试</button>
+      <button id="btnClose" class="quiet">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
