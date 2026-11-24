@@ -10,12 +10,26 @@ const $ = (id) => document.getElementById(id);
 const DATA = window.XB_DATA || null;          // 单文件版内联数据；本地服务版为空
 const state = { bundle: null, msgs: [], summary: '', busy: false };
 
+/* 存储：file:// 或被嵌入的浏览器里 localStorage 可能直接抛异常，
+   一律走这个壳子，坏了就退回内存，功能不中断（只是关掉页面会丢）。 */
+const fallback = {};
+const store = {
+  get(k) {
+    try { const v = localStorage.getItem(k); return v === null ? (fallback[k] ?? null) : v; }
+    catch { return fallback[k] ?? null; }
+  },
+  set(k, v) {
+    fallback[k] = v;
+    try { localStorage.setItem(k, v); } catch { /* 静默降级 */ }
+  },
+};
+
 function cfg() {
-  try { return JSON.parse(localStorage.getItem(LS.cfg) || '{}'); } catch { return {}; }
+  try { return JSON.parse(store.get(LS.cfg) || '{}'); } catch { return {}; }
 }
 function saveCfg(patch) {
   const next = { ...cfg(), ...patch };
-  localStorage.setItem(LS.cfg, JSON.stringify(next));
+  store.set(LS.cfg, JSON.stringify(next));
   return next;
 }
 
@@ -29,7 +43,7 @@ function push(role, text) {
   row.querySelector('.text').textContent = text;
   $('log').appendChild(row);
   $('log').scrollTop = $('log').scrollHeight;
-  localStorage.setItem(LS.log, JSON.stringify(state.msgs));
+  store.set(LS.log, JSON.stringify(state.msgs));
   return row;
 }
 
@@ -181,8 +195,8 @@ async function start() {
     await loadBundle();
     saveCfg({ world: $('world').value, character: $('character').value });
     state.msgs = [];
-    state.summary = localStorage.getItem(LS.summary) || '';
-    localStorage.setItem(LS.log, '[]');
+    state.summary = store.get(LS.summary) || '';
+    store.set(LS.log, '[]');
     $('log').innerHTML = '';
     const wsel = $('world');
     $('worldTitle').textContent = wsel.options[wsel.selectedIndex]?.text || state.bundle.world;
@@ -245,7 +259,7 @@ async function settle() {
     const content = await chat(msgs);
     row.remove();
     state.summary = (state.summary ? state.summary + '\n\n---\n\n' : '') + content;
-    localStorage.setItem(LS.summary, state.summary);
+    store.set(LS.summary, state.summary);
     push('system', '【结算】\n' + content);
   } catch (e) {
     document.querySelector('.pending')?.remove();
@@ -289,22 +303,34 @@ async function saveAndTest() {
     temperature: Number($('temp').value),
     persona: $('persona').value,
   };
-  saveCfg(patch);
+  try {
+    store.set(LS.cfg, JSON.stringify({ ...cfg(), ...patch }));
+    syncHead();
+  } catch (e) {
+    $('testinfo').textContent = '保存失败：' + e.message;
+    return;
+  }
   if (!patch.base_url || !patch.model || !patch.api_key) {
-    $('testinfo').textContent = '三项还没填全。';
+    $('testinfo').textContent = '三项还没填全（地址、模型名、Key）。';
     return;
   }
   $('testinfo').textContent = '测试中……';
   try {
     const content = await chat([{ role: 'user', content: '只回两个字：可用' }]);
     $('testinfo').textContent = '接口通了：' + content.slice(0, 40);
-    $('btnSave').textContent = '保存并测试';
+    $('connDot').className = 'dot ok';
+    setTimeout(() => { $('drawer').setAttribute('hidden', ''); }, 600);
   } catch (e) {
     $('testinfo').textContent = '不通：' + e.message;
   }
 }
 
 /* ---------- 绑定 ---------- */
+
+window.addEventListener('error', (e) => {
+  const t = document.getElementById('hint');
+  if (t) { t.style.color = '#c4594a'; t.textContent = '页面出错：' + (e.message || e.type); }
+});
 
 window.addEventListener('DOMContentLoaded', async () => {
   $('btnSend').onclick = send;
@@ -333,3 +359,4 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (!c.api_key) openDrawer(true);
   $('input').focus();
 });
+

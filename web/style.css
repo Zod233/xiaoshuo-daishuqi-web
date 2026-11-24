@@ -268,6 +268,7 @@ button.send:hover { color: #fff; border-color: #5b5245; }
   padding: 24px;
   z-index: 9;
 }
+.veil[hidden] { display: none; }   /* 作者样式里的 display 会盖掉 [hidden]，必须显式关掉 */
 .card {
   width: min(560px, 96vw);
   max-height: 90vh;
